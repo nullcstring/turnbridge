@@ -41,6 +41,30 @@ Open `TurnBridge.xcodeproj` (or `.xcworkspace` if applicable) in Xcode.
 5. **Build and Run:**
 Select your target device (iPhone/iPad) and press `Cmd + R` to build and run the app.
 
+## 📲 Install Pre-built IPA (No Xcode Required)
+
+If you don't have a Mac or Xcode, you can download the pre-built unsigned IPA from the [Releases](https://github.com/nullcstring/turnbridge/releases) page and sign it yourself.
+
+### Signing & Installation
+
+You can sign the IPA using any of the following tools:
+
+| Tool | Platform | Apple ID Required |
+|------|----------|-------------------|
+| [Sideloadly](https://sideloadly.io) | Mac / Windows | Yes (free Apple ID) |
+| [GBox](https://gbox.run) | On-device (iOS) | No |
+| [ESign](https://esign.yyyue.xyz) | On-device (iOS) | No (certificate needed) |
+| [Feather](https://github.com/khcrysalis/Feather) | On-device (iOS) | Yes (free Apple ID) |
+
+**Example with Sideloadly:**
+
+1. Download `TurnBridge.ipa` from the latest [Release](https://github.com/nullcstring/turnbridge/releases).
+2. Install [Sideloadly](https://sideloadly.io) on your Mac or PC.
+3. Connect your iPhone via USB.
+4. Drag the `.ipa` file into Sideloadly and enter your Apple ID.
+5. After installation, go to **Settings → General → VPN & Device Management** and trust the profile.
+6. Open TurnBridge and import your configuration.
+
 ## 🛠 Usage (Configuration Import)
 
 TurnBridge uses a specific JSON structure encoded in Base64 for fast configuration imports.

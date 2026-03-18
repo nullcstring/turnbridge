@@ -51,3 +51,6 @@ Carthage/Build/
 
 # WireGuard Specific
 wireguard-apple/Sources/WireGuardApp/Config/Developer.xcconfig
+
+# Unsigned build artifacts
+build_unsigned_ipa.sh
