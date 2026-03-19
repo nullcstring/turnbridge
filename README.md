@@ -47,18 +47,19 @@ If you don't have a Mac or Xcode, you can download the pre-built unsigned IPA fr
 
 ### Signing & Installation
 
-> ⚠️ **Important:** TurnBridge uses a Network Extension (VPN). Signing with a **free Apple ID** may not work — a **paid Apple Developer account** ($99/year) or an enterprise certificate is recommended.
+> ⚠️ **Important:** TurnBridge uses a Network Extension (VPN). Signing with a **free Apple ID** (via standard AltStore or Sideloadly) **will not work** because free accounts lack the required VPN entitlements. You must use a paid Apple Developer account ($99/year) or a third-party paid signing service.
+* **[KravaSign](https://www.kravasign.com/)** — Tested and confirmed working by the community.
 
-You can sign the IPA using any of the following tools:
+**Manual Installation Tools:**
+If you already possess a paid Apple Developer certificate (or bought one from the services above), you can sign and install the IPA yourself using:
 
-| Tool | Platform | Apple ID Required |
-|------|----------|-------------------|
-| [Sideloadly](https://sideloadly.io) | Mac / Windows | Yes (free Apple ID) |
-| [GBox](https://gbox.run) | On-device (iOS) | No |
-| [ESign](https://esign.yyyue.xyz) | On-device (iOS) | No (certificate needed) |
-| [Feather](https://github.com/khcrysalis/Feather) | On-device (iOS) | Yes (free Apple ID) |
+| Tool | Platform | Requirement |
+|------|----------|-------------|
+| [GBox](https://gbox.run) | On-device (iOS) | Paid Certificate Needed |
+| [ESign](https://esign.yyyue.xyz) | On-device (iOS) | Paid Certificate Needed |
+| [Sideloadly](https://sideloadly.io) | Mac / Windows | Paid Apple ID Needed |
 
-**Example with Sideloadly:**
+**Example with Sideloadly (⚠️ Paid Certificate Needed):**
 
 1. Download `TurnBridge.ipa` from the latest [Release](https://github.com/nullcstring/turnbridge/releases).
 2. Install [Sideloadly](https://sideloadly.io) on your Mac or PC.
