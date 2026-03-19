@@ -47,6 +47,8 @@ If you don't have a Mac or Xcode, you can download the pre-built unsigned IPA fr
 
 ### Signing & Installation
 
+> ⚠️ **Important:** TurnBridge uses a Network Extension (VPN). Signing with a **free Apple ID** may not work — a **paid Apple Developer account** ($99/year) or an enterprise certificate is recommended.
+
 You can sign the IPA using any of the following tools:
 
 | Tool | Platform | Apple ID Required |
