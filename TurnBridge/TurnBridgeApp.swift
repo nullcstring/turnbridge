@@ -29,7 +29,10 @@ struct TurnBridge: App {
                let protocolConfiguration = NETunnelProviderProtocol()
 
                // Set the tunnel extension's bundle id
-               protocolConfiguration.providerBundleIdentifier = "com.netlab.TurnBridge.network-extension"
+               //protocolConfiguration.providerBundleIdentifier = "com.netlab.TurnBridge.network-extension"
+               let currentAppBundleId = Bundle.main.bundleIdentifier ?? "com.netlab.TurnBridge"
+               protocolConfiguration.providerBundleIdentifier = "\(currentAppBundleId).network-extension"
+               
                let cleanIP = peerAddr.components(separatedBy: ":").first ?? peerAddr
                protocolConfiguration.serverAddress = cleanIP
                

@@ -53,7 +53,6 @@ fi
 export PATH="/opt/homebrew/bin:$PATH"
 # export PATH=${PATH}:/usr/local/go/bin
 
-
 cd "$wireguard_go_dir" && /usr/bin/make
 
 

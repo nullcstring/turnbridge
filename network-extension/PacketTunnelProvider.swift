@@ -97,7 +97,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         StopProxy()
         
         adapter.stop { [weak self] error in
-            guard let self = self else { return }
+            guard self != nil else { return }
             if let error = error {
                 sharedLogger.error("Failed to stop WireGuard adapter: \(error.localizedDescription)")
             }
