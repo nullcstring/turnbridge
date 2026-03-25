@@ -19,6 +19,8 @@ The project is based on the repositories listed in the **Acknowledgments** secti
 
 To build and run TurnBridge locally, you need a macOS environment with Xcode installed, as well as Go (for compiling the WireGuard/TURN bridge).
 
+> ⚠️ **Important:** TurnBridge uses a Network Extension (VPN). Signing with a **free Apple ID** (via standard AltStore or Sideloadly) **will not work** because free accounts lack the required VPN entitlements. You must use a paid Apple Developer account ($99/year) or a third-party paid signing service.
+
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/nullcstring/turnbridge.git
@@ -47,26 +49,15 @@ If you don't have a Mac or Xcode, you can download the pre-built unsigned IPA fr
 
 ### Signing & Installation
 
-> ⚠️ **Important:** TurnBridge uses a Network Extension (VPN). Signing with a **free Apple ID** (via standard AltStore or Sideloadly) **will not work** because free accounts lack the required VPN entitlements. You must use a paid Apple Developer account ($99/year) or a third-party paid signing service.
-* **[KravaSign](https://www.kravasign.com/)** — Tested and confirmed working by the community ($10).
-
 **Manual Installation Tools:**
 If you already possess a paid Apple Developer certificate (or bought one from the services above), you can sign and install the IPA yourself using:
 
-| Tool | Platform | Requirement |
-|------|----------|-------------|
-| [GBox](https://gbox.run) | On-device (iOS) | Paid Certificate Needed |
-| [ESign](https://esign.yyyue.xyz) | On-device (iOS) | Paid Certificate Needed |
-| [Sideloadly](https://sideloadly.io) | Mac / Windows | Paid Apple ID Needed |
+| Tool | Requirement |
+|------|-------------|
+| [KravaSign](https://www.kravasign.com/) | ⚠️ Without a developer certificate, price $10 https://github.com/nullcstring/turnbridge/issues/2#issuecomment-4129716584 |
+| [GBox](https://gbox.run) | Paid Certificate Needed |
+| [ESign](https://esign.yyyue.xyz) | Paid Certificate Needed |
 
-**Example with Sideloadly (⚠️ Paid Certificate Needed):**
-
-1. Download `TurnBridge.ipa` from the latest [Release](https://github.com/nullcstring/turnbridge/releases).
-2. Install [Sideloadly](https://sideloadly.io) on your Mac or PC.
-3. Connect your iPhone via USB.
-4. Drag the `.ipa` file into Sideloadly and enter your Apple ID.
-5. After installation, go to **Settings → General → VPN & Device Management** and trust the profile.
-6. Open TurnBridge and import your configuration.
 
 ## 🛠 Usage (Configuration Import)
 
