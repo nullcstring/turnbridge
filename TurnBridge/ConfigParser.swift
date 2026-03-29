@@ -10,6 +10,7 @@ struct TurnConfigImport: Codable {
     let listen: String
     let n: Int
     let wg: String
+    let name: String?
 }
 
 enum ConfigParseError: LocalizedError {

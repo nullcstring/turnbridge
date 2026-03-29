@@ -44,6 +44,10 @@ struct TurnBridge: App {
                 "nValue": nValue
                ]
 
+               protocolConfiguration.includeAllNetworks = true
+               protocolConfiguration.excludeAPNs = true
+               protocolConfiguration.excludeCellularServices = true
+
                tunnelManager.protocolConfiguration = protocolConfiguration
                tunnelManager.isEnabled = true
                tunnelManager.saveToPreferences { error in

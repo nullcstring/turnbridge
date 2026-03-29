@@ -1,38 +1,54 @@
-//
-//  Created by nullcstring.
-//
-
 import SwiftUI
 import NetworkExtension
 
+struct SettingsSheet: Identifiable {
+    let id = UUID()
+    let profileID: UUID
+    let isNew: Bool
+}
+
 struct ContentView: View {
     var app: TurnBridge
-    
+
     @State private var vpnStatus: NEVPNStatus = .disconnected
-    @StateObject private var settings = VPNSettings()
-    
+    @StateObject private var store = ProfileStore()
+
     @State private var showImportModal = false
     @State private var showingAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
+    @State private var settingsSheet: SettingsSheet?
 
     var body: some View {
         NavigationStack {
             VStack {
-                Text("TurnBridge")
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [.blue, .cyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                VStack(spacing: 4) {
+                    Text("TurnBridge")
+                        .font(.system(size: 46, weight: .heavy, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.blue, .cyan],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-                    .padding(.top, 30)
-                
+                        .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+
+                    Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 30)
+
+                if !store.profiles.isEmpty {
+                    profilePicker
+                        .padding(.top, 12)
+                        .padding(.horizontal, 40)
+                        .disabled(vpnStatus != .disconnected)
+                }
+
                 Spacer()
-                
+
                 VStack(spacing: 50) {
                     Image(systemName: vpnStatus == .connected ? "lock.shield.fill" : "lock.shield")
                         .resizable()
@@ -41,9 +57,8 @@ struct ContentView: View {
                         .foregroundColor(iconColor)
                         .shadow(color: iconColor.opacity(0.4), radius: vpnStatus == .connected ? 20 : 0)
                         .scaleEffect(vpnStatus == .connecting ? 1.1 : 1.0)
-                        
                         .animation(vpnStatus == .connecting ? .easeInOut(duration: 1).repeatForever() : .default, value: vpnStatus)
-                    
+
                     Button(action: toggleTunnel) {
                         Text(buttonText)
                             .font(.title3)
@@ -55,10 +70,10 @@ struct ContentView: View {
                             .cornerRadius(16)
                             .shadow(color: buttonColor.opacity(0.4), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(vpnStatus == .connecting || vpnStatus == .disconnecting)
+                    .disabled(vpnStatus == .connecting || vpnStatus == .disconnecting || store.selectedProfile == nil)
                     .padding(.horizontal, 40)
                 }
-                
+
                 Spacer()
             }
             .overlay {
@@ -77,14 +92,22 @@ struct ContentView: View {
                     }
                     .disabled(vpnStatus != .disconnected)
                 }
-                
+
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: SettingsView(settings: settings)) {
+                    Button(action: {
+                        guard let id = store.selectedProfileID else { return }
+                        settingsSheet = SettingsSheet(profileID: id, isNew: false)
+                    }) {
                         Image(systemName: "gearshape.fill")
                             .font(.title3)
                             .foregroundColor(.primary)
                     }
-                    .disabled(vpnStatus != .disconnected)
+                    .disabled(vpnStatus != .disconnected || store.selectedProfile == nil)
+                }
+            }
+            .sheet(item: $settingsSheet) { sheet in
+                NavigationStack {
+                    SettingsView(store: store, profileID: sheet.profileID, isNewProfile: sheet.isNew)
                 }
             }
             .onAppear(perform: checkInitialStatus)
@@ -100,7 +123,40 @@ struct ContentView: View {
             }
         }
     }
-    
+
+    private var profilePicker: some View {
+        Menu {
+            ForEach(store.profiles) { profile in
+                Button(action: {
+                    store.selectedProfileID = profile.id
+                    store.save()
+                }) {
+                    if profile.id == store.selectedProfileID {
+                        Label(profile.name, systemImage: "checkmark")
+                    } else {
+                        Text(profile.name)
+                    }
+                }
+            }
+        } label: {
+            HStack {
+                Text(store.selectedProfile?.name ?? "Select Profile")
+                    .font(.system(size: 16, weight: .medium, design: .rounded))
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.secondary.opacity(0.4), lineWidth: 1)
+            )
+        }
+    }
+
     private var importModalView: some View {
         ZStack {
             Color.black.opacity(0.3)
@@ -108,11 +164,11 @@ struct ContentView: View {
                 .onTapGesture {
                     withAnimation { showImportModal = false }
                 }
-            
-            VStack(spacing: 25) {
+
+            VStack(spacing: 16) {
                 Text("Add Configuration")
                     .font(.headline)
-                
+
                 Button(action: importFromClipboard) {
                     HStack {
                         Image(systemName: "doc.on.clipboard")
@@ -125,7 +181,20 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                
+
+                Button(action: addManualProfile) {
+                    HStack {
+                        Image(systemName: "square.and.pencil")
+                        Text("Add Manually")
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+
                 Button(action: {
                     withAnimation { showImportModal = false }
                 }) {
@@ -142,7 +211,7 @@ struct ContentView: View {
             .transition(.scale(scale: 0.95).combined(with: .opacity))
         }
     }
-    
+
     private var buttonText: String {
         switch vpnStatus {
         case .connected: return "Disconnect"
@@ -151,7 +220,7 @@ struct ContentView: View {
         default: return "Connect"
         }
     }
-    
+
     private var buttonColor: Color {
         switch vpnStatus {
         case .connected: return .red
@@ -159,7 +228,7 @@ struct ContentView: View {
         default: return .blue
         }
     }
-    
+
     private var iconColor: Color {
         switch vpnStatus {
         case .connected: return .green
@@ -167,42 +236,40 @@ struct ContentView: View {
         default: return .gray
         }
     }
-    
-    private func validateConfig() -> String? {
-        if settings.vkLink.isEmpty || settings.vkLink.contains("YOUR_INVITE_LINK") {
+
+    private func validateConfig(_ profile: VPNProfile) -> String? {
+        if profile.vkLink.isEmpty {
             return "Please provide a valid TURN Server URL."
         }
-        if settings.peerAddr.isEmpty || settings.peerAddr.contains("SERVER_IP:PORT") {
+        if profile.peerAddr.isEmpty {
             return "Please provide a valid Peer Address."
         }
-        if settings.listenAddr.isEmpty || settings.listenAddr.contains("LISTEN_PORT") {
+        if profile.listenAddr.isEmpty {
             return "Please provide a valid Listen Address."
         }
-        if settings.wgQuickConfig.isEmpty ||
-           settings.wgQuickConfig.contains("YOUR_CLIENT_PRIVATE_KEY_HERE") ||
-           settings.wgQuickConfig.contains("YOUR_SERVER_PUBLIC_KEY_HERE") ||
-           settings.wgQuickConfig.contains("IP_ADDRESS") {
-            return "Please provide a valid WireGuard configuration with your specific keys and IP address."
+        if profile.wgQuickConfig.isEmpty {
+            return "Please provide a valid WireGuard configuration."
         }
         return nil
     }
-    
+
     private func toggleTunnel() {
         if vpnStatus == .connected {
             app.turnOffTunnel()
         } else {
-            if let errorMessage = validateConfig() {
+            guard let profile = store.selectedProfile else { return }
+            if let errorMessage = validateConfig(profile) {
                 showAlert(title: "Configuration Required", message: errorMessage)
                 return
             }
-            
+
             vpnStatus = .connecting
             app.turnOnTunnel(
-                vkLink: settings.vkLink,
-                peerAddr: settings.peerAddr,
-                listenAddr: settings.listenAddr,
-                nValue: settings.nValue,
-                wgQuickConfig: settings.wgQuickConfig
+                vkLink: profile.vkLink,
+                peerAddr: profile.peerAddr,
+                listenAddr: profile.listenAddr,
+                nValue: profile.nValue,
+                wgQuickConfig: profile.wgQuickConfig
             ) { isSuccess in
                 if !isSuccess {
                     vpnStatus = .disconnected
@@ -211,7 +278,7 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private func checkInitialStatus() {
         NETunnelProviderManager.loadAllFromPreferences { managers, error in
             if let manager = managers?.first {
@@ -221,7 +288,7 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private func importFromClipboard() {
         guard let clipboardString = UIPasteboard.general.string else {
             withAnimation { showImportModal = false }
@@ -230,22 +297,23 @@ struct ContentView: View {
             }
             return
         }
-        
+
         do {
             let config = try ConfigParser.parse(from: clipboardString)
-            
-            settings.vkLink = config.turn
-            settings.peerAddr = config.peer
-            settings.listenAddr = config.listen
-            settings.nValue = config.n
-            settings.wgQuickConfig = config.wg
-            
+            let profile = VPNProfile(
+                name: config.name ?? "Profile",
+                vkLink: config.turn,
+                peerAddr: config.peer,
+                listenAddr: config.listen,
+                nValue: config.n,
+                wgQuickConfig: config.wg
+            )
+            store.addProfile(profile)
+
             withAnimation { showImportModal = false }
-            
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                showAlert(title: "Success", message: "Configuration imported successfully!")
+                showAlert(title: "Success", message: "Profile \"\(store.selectedProfile?.name ?? "")\" imported.")
             }
-            
         } catch {
             withAnimation { showImportModal = false }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -253,7 +321,16 @@ struct ContentView: View {
             }
         }
     }
-    
+
+    private func addManualProfile() {
+        withAnimation { showImportModal = false }
+        let profile = VPNProfile(name: "Profile")
+        store.addProfile(profile)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            settingsSheet = SettingsSheet(profileID: profile.id, isNew: true)
+        }
+    }
+
     private func showAlert(title: String, message: String) {
         alertTitle = title
         alertMessage = message

@@ -2,6 +2,7 @@ import json
 import base64
 
 config = {
+    "name": "My Server",
     "turn": "https://vk.com/call/join/YOUR_INVITE_LINK",
     "peer": "YOUR_SERVER_IP:PORT",
     "listen": "127.0.0.1:9000",
