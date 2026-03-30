@@ -55,3 +55,5 @@ wireguard-apple/Sources/WireGuardApp/Config/Developer.xcconfig
 # Unsigned build artifacts
 build_unsigned_ipa.sh
 my_quick_link.py
+.claude/
+my_quick_link2.py
