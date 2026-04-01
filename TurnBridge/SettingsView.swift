@@ -34,7 +34,7 @@ struct SettingsView: View {
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
 
-                Stepper("Connections (n): \(profile.nValue)", value: binding(\.nValue), in: 1...10)
+                Stepper("Connections (n): \(profile.nValue)", value: binding(\.nValue), in: 1...16)
             }
 
             Section(header: Text("WireGuard Config")) {

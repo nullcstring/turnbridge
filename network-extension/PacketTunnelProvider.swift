@@ -67,7 +67,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
 
         DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-            let ready = ProxyWaitReady(8000)
+            let ready = ProxyWaitReady(12000)
             guard let self = self else { return }
             
             if ready == 0 {

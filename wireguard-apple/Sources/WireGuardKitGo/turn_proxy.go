@@ -35,7 +35,6 @@ import (
     "github.com/pion/dtls/v3/pkg/crypto/selfsign"
     "github.com/pion/logging"
     "github.com/pion/turn/v5"
-    "github.com/bschaatsbergen/dnsdialer"
 )
 
 var proxyLoggerFunc C.proxy_logger_fn_t
@@ -81,9 +80,7 @@ func init() {
     log.SetOutput(ProxyLogger(0))
 }
 
-type getCredsFunc func(string) (string, string, string, error)
-
-func getCreds(link string, dialer *dnsdialer.Dialer) (resUser string, resPass string, resTurn string, resErr error) {
+func getCreds(link string) (resUser string, resPass string, resTurn string, resErr error) {
     
 	doRequest := func(data string, url string) (resp map[string]interface{}, err error) {
 
@@ -93,7 +90,6 @@ func getCreds(link string, dialer *dnsdialer.Dialer) (resUser string, resPass st
 				MaxIdleConns:        100,
 				MaxIdleConnsPerHost: 100,
 				IdleConnTimeout:     90 * time.Second,
-				DialContext:         dialer.DialContext,
 			},
 		}
 		defer client.CloseIdleConnections()
@@ -329,13 +325,12 @@ type turnParams struct {
 	port     string
 	link     string
 	udp      bool
-	getCreds getCredsFunc
 }
 
 func oneTurnConnection(ctx context.Context, turnParams *turnParams, peer *net.UDPAddr, conn2 net.PacketConn, c chan<- error) {
 	var err error = nil
 	defer func() { c <- err }()
-	user, pass, url, err1 := turnParams.getCreds(turnParams.link)
+	user, pass, url, err1 := getCreds(turnParams.link)
 	if err1 != nil {
 		err = fmt.Errorf("failed to get TURN credentials: %s", err1)
 		return
@@ -572,12 +567,6 @@ func StartProxy(cLink *C.char, cPeerAddr *C.char, cLocalAddr *C.char, cN C.int) 
     proxyCancel = cancel
     defer cancel()
 
-    dialer := dnsdialer.New(
-        dnsdialer.WithResolvers("77.88.8.8:53", "77.88.8.1:53", "8.8.8.8:53", "8.8.4.4:53", "1.1.1.1:53"),
-        dnsdialer.WithStrategy(dnsdialer.Fallback{}),
-        dnsdialer.WithCache(100, 10*time.Hour, 10*time.Hour),
-    )
-
     peer, err := net.ResolveUDPAddr("udp", peerAddrStr)
     if err != nil {
         log.Printf("Resolve UDP error: %v", err)
@@ -591,16 +580,11 @@ func StartProxy(cLink *C.char, cPeerAddr *C.char, cLocalAddr *C.char, cN C.int) 
         link = link[:idx]
     }
 
-    getCredsClosure := func(s string) (string, string, string, error) {
-		return getCreds(s, dialer) // Прокидываем dialer "скрыто" от turnParams
-	}
-
 	params := &turnParams{
 		host:     host,
 		port:     port,
 		link:     link,
 		udp:      udp,
-		getCreds: getCredsClosure,
 	}
 
     listenConnChan := make(chan net.PacketConn)

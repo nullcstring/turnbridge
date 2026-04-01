@@ -3,7 +3,6 @@ module github.com/amnezia-vpn/amneziawg-apple
 go 1.26
 
 require (
-	github.com/bschaatsbergen/dnsdialer v0.0.0-20251225104348-3e7610e8ea45
 	github.com/cbeuw/connutil v1.0.1
 	github.com/google/uuid v1.6.0
 	github.com/pion/dtls/v3 v3.1.2
@@ -26,7 +25,6 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/juju/ratelimit v1.0.2 // indirect
 	github.com/klauspost/compress v1.17.7 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
