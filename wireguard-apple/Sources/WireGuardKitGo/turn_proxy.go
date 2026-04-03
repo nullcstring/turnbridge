@@ -142,15 +142,42 @@ func getCreds(link string) (resUser string, resPass string, resTurn string, resE
 
 	token1 := resp["data"].(map[string]interface{})["access_token"].(string)
 
-	data = fmt.Sprintf("vk_join_link=https://vk.com/call/join/%s&name=123&access_token=%s", link, token1)
-	url = "https://api.vk.ru/method/calls.getAnonymousToken?v=5.274&client_id=6287487"
+    data = fmt.Sprintf("vk_join_link=https://vk.com/call/join/%s&name=123&access_token=%s", link, token1)
+    url = "https://api.vk.ru/method/calls.getAnonymousToken?v=5.274&client_id=6287487"
 
-	resp, err = doRequest(data, url)
-	if err != nil {
-		return "", "", "", fmt.Errorf("request error:%s", err)
-	}
+    resp, err = doRequest(data, url)
+    if err != nil {
+        return "", "", "", fmt.Errorf("request error:%s", err)
+    }
 
-	token2 := resp["response"].(map[string]interface{})["token"].(string)
+    if errObj, hasErr := resp["error"].(map[string]interface{}); hasErr {
+        captchaErr := ParseVkCaptchaError(errObj)
+        if captchaErr != nil && captchaErr.IsCaptchaError() {
+            log.Println("[Captcha] A “Not Robot” CAPTCHA has been detected; let's solve it...")
+            
+            successToken, solveErr := solveVkCaptcha(context.Background(), captchaErr)
+            if solveErr != nil {
+                return "", "", "", fmt.Errorf("Unable to solve the CAPTCHA: %v", solveErr)
+            }
+            
+            log.Println("[Captcha] Captcha solved, retrying the request...")
+            
+            data = fmt.Sprintf("vk_join_link=https://vk.com/call/join/%s&name=123"+
+                "&captcha_sid=%s&is_sound_captcha=0&success_token=%s"+
+                "&captcha_ts=%s&captcha_attempt=%s&access_token=%s",
+                link, captchaErr.CaptchaSid, successToken,
+                captchaErr.CaptchaTs, captchaErr.CaptchaAttempt, token1)
+                
+            resp, err = doRequest(data, url)
+            if err != nil {
+                return "", "", "", fmt.Errorf("re-request error: %s", err)
+            }
+        } else {
+            return "", "", "", fmt.Errorf("VK API error: %v", errObj)
+        }
+    }
+
+    token2 := resp["response"].(map[string]interface{})["token"].(string)
 
 	data = fmt.Sprintf("%s%s%s", "session_data=%7B%22version%22%3A2%2C%22device_id%22%3A%22", uuid.New(), "%22%2C%22client_version%22%3A1.1%2C%22client_type%22%3A%22SDK_JS%22%7D&method=auth.anonymLogin&format=JSON&application_key=CGMMEJLGDIHBABABA")
 	url = "https://calls.okcdn.ru/fb.do"
