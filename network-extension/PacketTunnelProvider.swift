@@ -140,7 +140,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
 
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
-        // Add code here to handle the message.
         if let handler = completionHandler {
             handler(messageData)
         }

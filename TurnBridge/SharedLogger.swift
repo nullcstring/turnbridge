@@ -71,45 +71,28 @@ public struct LogEntry: Identifiable, Equatable {
 
     /// Parse a raw log line back into a LogEntry
     public static func parse(_ line: String) -> LogEntry? {
-        // Format: [MM-dd HH:mm:ss] LEVEL|SOURCE|message
         guard line.hasPrefix("[") else { return nil }
-
         guard let closeBracket = line.firstIndex(of: "]") else { return nil }
         let dateString = String(line[line.index(after: line.startIndex)..<closeBracket])
-
         let afterBracket = line.index(closeBracket, offsetBy: 2, limitedBy: line.endIndex) ?? line.endIndex
         let rest = String(line[afterBracket...])
 
         let parts = rest.split(separator: "|", maxSplits: 2)
         guard parts.count == 3 else {
-            // Legacy format fallback: [MM-dd HH:mm:ss] message
             let formatter = DateFormatter()
             formatter.dateFormat = "MM-dd HH:mm:ss"
             let date = formatter.date(from: dateString) ?? Date()
-            return LogEntry(
-                id: UUID(),
-                timestamp: date,
-                level: .info,
-                source: inferSource(from: rest),
-                message: rest
-            )
+            return LogEntry(id: UUID(), timestamp: date, level: .info, source: inferSource(from: rest), message: rest)
         }
-
-        let levelStr = String(parts[0])
-        let sourceStr = String(parts[1])
-        let message = String(parts[2])
 
         let formatter = DateFormatter()
         formatter.dateFormat = "MM-dd HH:mm:ss"
         let date = formatter.date(from: dateString) ?? Date()
-
-        let level = LogLevel.allCases.first { $0.label == levelStr } ?? .info
-        let source = LogSource.allCases.first { $0.rawValue == sourceStr } ?? .app
-
-        return LogEntry(id: UUID(), timestamp: date, level: level, source: source, message: message)
+        let level = LogLevel.allCases.first { $0.label == String(parts[0]) } ?? .info
+        let source = LogSource.allCases.first { $0.rawValue == String(parts[1]) } ?? .app
+        return LogEntry(id: UUID(), timestamp: date, level: level, source: source, message: String(parts[2]))
     }
 
-    /// Infer source from legacy log lines (e.g. those with [WG] or [TP] markers)
     private static func inferSource(from message: String) -> LogSource {
         if message.contains("[WG]") { return .wireguard }
         if message.contains("[TP]") { return .tunnel }
@@ -120,21 +103,84 @@ public struct LogEntry: Identifiable, Equatable {
 // MARK: - SharedLogger
 
 public struct SharedLogger {
-    static var appGroupID: String {
+
+    // MARK: - App Group detection from binary entitlements
+
+    private static let _appGroupID: String? = {
+        // Try reading App Group from code signature entitlements in the Mach-O binary
+        if let groups = appGroupsFromBinary(), let first = groups.first {
+            return first
+        }
+        // Fallback: derive from bundle ID (works for Xcode-signed builds)
         let bundleID = Bundle.main.bundleIdentifier ?? "com.netlab.TurnBridge"
         let baseBundleID = bundleID.replacingOccurrences(of: ".network-extension", with: "")
         return "group.\(baseBundleID)"
+    }()
+
+    static var appGroupID: String? { _appGroupID }
+
+    private static func appGroupsFromBinary() -> [String]? {
+        // Try own executable first
+        if let path = Bundle.main.executablePath,
+           let groups = extractAppGroups(fromBinaryAt: path) {
+            return groups
+        }
+        // If running as network extension, try the main app binary
+        // Extension path: MainApp.app/PlugIns/Extension.appex/Extension
+        // Main app path:  MainApp.app/MainApp
+        let bundlePath = Bundle.main.bundlePath
+        if bundlePath.hasSuffix(".appex") {
+            let plugInsDir = (bundlePath as NSString).deletingLastPathComponent
+            let appDir = (plugInsDir as NSString).deletingLastPathComponent
+            let appName = ((appDir as NSString).lastPathComponent as NSString).deletingPathExtension
+            let mainAppPath = (appDir as NSString).appendingPathComponent(appName)
+            if let groups = extractAppGroups(fromBinaryAt: mainAppPath) {
+                return groups
+            }
+        }
+        return nil
+    }
+
+    private static func extractAppGroups(fromBinaryAt path: String) -> [String]? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+
+        let xmlMarker = Data("<?xml".utf8)
+        let endMarker = Data("</plist>".utf8)
+        let groupsKey = Data("application-groups".utf8)
+
+        guard data.range(of: groupsKey) != nil else { return nil }
+
+        var searchRange = data.startIndex..<data.endIndex
+        while let xmlStart = data.range(of: xmlMarker, in: searchRange) {
+            guard let xmlEnd = data.range(of: endMarker, in: xmlStart.lowerBound..<data.endIndex) else { break }
+
+            let plistRange = xmlStart.lowerBound..<xmlEnd.upperBound
+            let plistData = data.subdata(in: plistRange)
+
+            if let plist = try? PropertyListSerialization.propertyList(from: plistData, format: nil) as? [String: Any],
+               let groups = plist["com.apple.security.application-groups"] as? [String],
+               !groups.isEmpty {
+                return groups
+            }
+
+            searchRange = xmlEnd.upperBound..<data.endIndex
+        }
+        return nil
+    }
+
+    // MARK: - Log file
+
+    static var isAvailable: Bool {
+        return logFileURL != nil
     }
 
     static var logFileURL: URL? {
-        let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
+        guard let groupID = appGroupID else { return nil }
+        let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)
         return container?.appendingPathComponent("vpn_tunnel.log")
     }
 
-    /// Max log file size in bytes (500 KB)
     private static let maxLogSize: UInt64 = 500 * 1024
-
-    /// Number of lines to keep after rotation (keep the newest ~60%)
     private static let rotationKeepRatio: Double = 0.6
 
     // MARK: - Write
@@ -148,9 +194,9 @@ public struct SharedLogger {
 
         if FileManager.default.fileExists(atPath: url.path) {
             if let fileHandle = try? FileHandle(forWritingTo: url) {
+                defer { fileHandle.closeFile() }
                 fileHandle.seekToEndOfFile()
                 fileHandle.write(data)
-                fileHandle.closeFile()
             }
             rotateIfNeeded()
         } else {
@@ -158,7 +204,7 @@ public struct SharedLogger {
         }
     }
 
-    // MARK: - Convenience methods
+    // MARK: - Convenience
 
     public static func debug(_ message: String, source: LogSource = .app) {
         log(message, level: .debug, source: source)

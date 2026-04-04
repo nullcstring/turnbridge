@@ -66,7 +66,7 @@ struct LogView: View {
         monitoringTask = Task {
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(nanoseconds: 500_000_000)
+                    try await Task.sleep(nanoseconds: 2_000_000_000)
                     loadLogs()
                 } catch {
                     break
@@ -227,14 +227,27 @@ struct LogView: View {
     private var emptyStateView: some View {
         VStack(spacing: 12) {
             Spacer()
-            Image(systemName: entries.isEmpty ? "doc.text" : "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary.opacity(0.5))
-            Text(entries.isEmpty ? "No logs yet" : "No matches")
-                .font(.system(size: 16, weight: .medium))
-            Text(entries.isEmpty ? "Logs appear when you connect." : "Try adjusting filters.")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
+            if !SharedLogger.isAvailable {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40))
+                    .foregroundColor(.orange.opacity(0.7))
+                Text("Logging unavailable")
+                    .font(.system(size: 16, weight: .medium))
+                Text("Could not detect App Group from binary entitlements. Your signing method may not embed entitlements properly.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            } else {
+                Image(systemName: entries.isEmpty ? "doc.text" : "magnifyingglass")
+                    .font(.system(size: 40))
+                    .foregroundColor(.secondary.opacity(0.5))
+                Text(entries.isEmpty ? "No logs yet" : "No matches")
+                    .font(.system(size: 16, weight: .medium))
+                Text(entries.isEmpty ? "Logs appear when you connect." : "Try adjusting filters.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
             Spacer()
         }
         .frame(maxWidth: .infinity)
